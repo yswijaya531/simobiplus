@@ -20,9 +20,9 @@ import (
 
 	"github.com/kelseyhightower/envconfig"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 
-	be "github.com/wolvex/paymentaggregator"
+	be "gitlab.smartfren.com/paggr/libraries"
 )
 
 //Config stores global configuration loaded from json file

@@ -4,14 +4,14 @@ import (
 	"net/http"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 
 	cm "github.com/yswijaya531/simobiplus/common"
 
 	"github.com/labstack/echo"
-	be "github.com/wolvex/paymentaggregator"
 	"github.com/yswijaya531/simobiplus/handlers"
 	mw "github.com/yswijaya531/simobiplus/middleware"
+	be "gitlab.smartfren.com/paggr/libraries"
 )
 
 var result be.Message

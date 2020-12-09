@@ -1,0 +1,57 @@
+version: "3.3"
+services:
+    simobi:
+        image: "${DOCKER_REGISTRY}/marketing/pa-simobiplus:$IMGVER"
+        environment:
+          - SIMOBI_LISTEN_PORT=:9661
+          - SIMOBI_CERTIFICATE_FILE=simobi-ssl.crt
+          - SIMOBI_KEY_FILE=simobi-ssl.key 
+          - SIMOBI_ROOT_URL=/paggr-simobi 
+          - SIMOBI_ORIGIN_HOST=pay-aggr-simobi 
+          - SIMOBI_PRIVATE_KEY=simobi.key 
+          - SIMOBI_BACKEND_KEY=backend.key.pub 
+          - SIMOBI_MERCHANT_ID=recharge:990001,billpay:990007,package:990006,starterpack:990009,esim:990008 
+          - SIMOBI_BILLER_CODE=990001 
+          - SIMOBI_CLIENT_KEY=SB-Mid-client-_yCZ7Mjfd-iBtX6Q 
+          - SIMOBI_SERVER_KEY=SB-Mid-server-IMrP4nx5yR6tq69LZDl-lqCr 
+          - SIMOBI_MERCHANT_NAME=Smartfren 
+          - SIMOBI_BRAND_NAME=Smartfren 
+          - SIMOBI_BACKEND_URL=https://tasks.backend:9610/paggr-be
+          - SIMOBI_SNAP_URL=https://api.banksinarmas.com 
+          - SIMOBI_TOKEN_URL=/bsim/v1/oauth-application-api/oauth2/token
+          - SIMOBI_PUSH_INVOICE_URL=/bsim/v1/pushinvoice/push-invoice
+          - SIMOBI_PUSH_STATUS_URL=/bsim/v1/pushinvoice/push-status
+          - SIMOBI_PULL_STATUS_URL=/bsim/v1/pushinvoice/push-status
+          - SIMOBI_REFUND_URL=/bsim/v1/pushinvoice/refund-invoice
+          - SIMOBI_TXTTYPE=0
+          - SIMOBI_IBM_CLIENT_ID=30e3fc6d-b8de-4384-a413-b70d5fab1c6c
+          - SIMOBI_GRANT_TYPE=client_credentials
+          - SIMOBI_CLIENT_ID=30e3fc6d-b8de-4384-a413-b70d5fab1c6c
+          - SIMOBI_CLIENT_SECRET=tH0xY0bC0tM0hA0uS3lS2iQ5lP3vY3sM2lH7sM1yI0fP3xY5uI
+          - SIMOBI_SCOPE=partner
+        extra_hosts:
+          - "api.banksinarmas.com:10.39.8.6"
+        deploy:
+            replicas: 2
+            restart_policy:
+                condition: any
+            labels:
+             - "traefik.enable=true"
+             - "traefik.http.routers.simobi.rule=PathPrefix(`/paggr-simobi`)"
+             - "traefik.http.routers.simobi.entrypoints=apitls"
+             - "traefik.http.routers.simobi.tls=true"
+             - "traefik.http.services.simobi.loadbalancer.server.scheme=https"
+             - "traefik.http.services.simobi.loadbalancer.server.port=9661"
+        networks:
+            - paggr_nw
+            - traefik_net
+        logging:
+            driver: gelf
+            options:
+                gelf-address: udp://10.16.49.120:5048
+    
+networks:
+    paggr_nw:
+        external: true      
+    traefik_net:
+        external: true

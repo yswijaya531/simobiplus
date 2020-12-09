@@ -3,9 +3,9 @@ package handlers
 import (
 	cm "github.com/yswijaya531/simobiplus/common"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	ex "github.com/wolvex/go/error"
-	be "github.com/wolvex/paymentaggregator"
+	be "gitlab.smartfren.com/paggr/libraries"
 )
 
 

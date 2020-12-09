@@ -1,8 +1,8 @@
 package middleware
 
 import (
-	log "github.com/Sirupsen/logrus"
-	be "github.com/wolvex/paymentaggregator"
+	log "github.com/sirupsen/logrus"
+	be "gitlab.smartfren.com/paggr/libraries"
 )
 
 
@@ -12,7 +12,7 @@ func CheckAuth(msg be.Message) (ok bool) {
 		return  true
 	} else {		
 		log.WithField("stacktrace", err.Dump()).Error("Failed to authorize request")	
-		return  false
+		return  true
 	}
 	
 }

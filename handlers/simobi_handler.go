@@ -12,10 +12,10 @@ import (
 	"strings"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	ex "github.com/wolvex/go/error"
-	be "github.com/wolvex/paymentaggregator"
 	cm "github.com/yswijaya531/simobiplus/common"
+	be "gitlab.smartfren.com/paggr/libraries"
 )
 
 type HttpClient struct {

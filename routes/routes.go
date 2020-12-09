@@ -34,7 +34,5 @@ func SimobiRoutes(g *echo.Group)  {
 	g.POST("/payment", controllers.PaymentControllers)
 
 	g.POST("/void", controllers.NotifyControllers)
-
-	
 	 
 }

@@ -3,11 +3,11 @@ package handlers
 import (
 	"time"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	cm "github.com/yswijaya531/simobiplus/common"
 
 	ex "github.com/wolvex/go/error"
-	be "github.com/wolvex/paymentaggregator"
+	be "gitlab.smartfren.com/paggr/libraries"
 )
 
 func AdviseHandler(req be.Message) (res be.Message, errs error) {

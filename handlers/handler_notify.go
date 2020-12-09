@@ -22,7 +22,7 @@ type Response struct {
 
 func NotifyHandler(req be.Message) (res be.Message, errs error) {
 	
-	//defer panicRecovery()
+	defer panicRecovery()
 
 	var err *ex.AppError
 	

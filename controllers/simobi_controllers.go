@@ -21,6 +21,7 @@ func AdviseControllers(c echo.Context) (errs error) {
 	req := new(be.Message)
 		
 	if errs = c.Bind(req); errs != nil {
+		log.WithField("error", errs).Error("Exception caught")
 		return  errs
 	}
 		
@@ -51,6 +52,7 @@ func CallBackControllers(c echo.Context) (errs error) {
 	req := new(cm.SimobiCallBack)
 		
 	if errs = c.Bind(req); errs != nil {
+		log.WithField("error", errs).Error("Exception caught")
 		return  errs
 	}
 	
@@ -77,6 +79,7 @@ func NotifyControllers(c echo.Context)  (errs error) {
 	req := new(be.Message)
 		
 	if errs = c.Bind(req); errs != nil {
+		log.WithField("error", errs).Error("Exception caught")
 		return  errs
 	}
 	
@@ -123,6 +126,7 @@ func PaymentControllers(c echo.Context) (errs error) {
 	req := new(be.Message)
 		
 	if errs = c.Bind(req); errs != nil {
+		log.WithField("error", errs).Error("Exception caught")
 		return  errs
 	}
 		
@@ -153,6 +157,7 @@ func VoidControllers(c echo.Context) (errs error) {
 	req := new(be.Message)
 		
 	if errs = c.Bind(req); errs != nil {
+		log.WithField("error", errs).Error("Exception caught")
 		return  errs
 	}
 		

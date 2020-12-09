@@ -1,450 +1,138 @@
 package handlers
 
 import (
-	"bytes"
-	"encoding/json"
+	"crypto/tls"
 	"fmt"
-	"io/ioutil"
-	"net"
 	"net/http"
-	"net/http/httputil"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
+	cm "github.com/yswijaya531/simobiplus/common"
+
 	ex "github.com/wolvex/go/error"
 	be "github.com/wolvex/paymentaggregator"
-	cm "github.com/yswijaya531/simobiplus/common"
 )
 
-type HttpClient struct {
-	ServerKey  string
-	Session    *http.Client
-	ExpiryTime int64
-}
-
-func isTimeout(err error) bool {
-	if err, ok := err.(net.Error); ok && err.Timeout() {
-		return true
-	} else {
-		return false
+func panicRecovery() {
+	if r := recover(); r != nil {
+		fmt.Printf("Recovering from panic: %v \n", r)
 	}
 }
 
-func getSimobiToken(c *HttpClient) (err *ex.AppError) {
-
-	form := url.Values{}
-	form.Add("grant_type", cm.Config.GrantType)
-	form.Add("client_id", cm.Config.ClientId)
-	form.Add("client_secret", cm.Config.ClientSecret)
-	form.Add("scope", cm.Config.Scope)
-	form.Add("x-ibm-client-id", cm.Config.IbmClientId)
-
-	var (
-		e         error
-		stringURL = cm.Config.SnapURL + cm.Config.TokenURL
-	)
-	resp, e := c.Session.PostForm(stringURL, form)
-
-	if e != nil {
-		err = ex.Error(e, be.ERR_SYSTEM_ERROR).Rem("Error, cant reach url destination %s", stringURL)
-		return
-	}
-
-	//dump response for logging
-	if dump, e := httputil.DumpResponse(resp, true); e != nil {
-		log.Info(string(dump))
-	} else {
-		statusCode := resp.StatusCode
-		log.WithFields(log.Fields{
-			"request" : string(dump),
-			"statusCode" :     statusCode,
-		  }).Info("Sending HTTP request")
-	}
-
-	if resp.StatusCode != 200 {
-		err = ex.Error(e, be.ERR_UNAUTHORIZED).Rem("Unable to get token")
-		return
-	}
-
-	body, _ := ioutil.ReadAll(resp.Body)
-	mdl := cm.TokenResponse{}
-	xerr := json.Unmarshal(body, &mdl)
-	if xerr != nil {
-		err = ex.Error(xerr, be.ERR_OTHERS).Rem("Error UnMarshall response from Auth TokenSimobi")
-		return
-	}
-	c.ServerKey = mdl.AccessToken
-
-	return
-}
-
-//PullInvoice is ...
-func (c *HttpClient) PullInvoice(invoiceNo string, reqDate string) (response *cm.SimobiCallBack, err *ex.AppError) {
-
-	msg := &cm.SimobiPull{
-		BillerCode:  cm.Config.BillerCode,
-		TxID:        invoiceNo,
-		RequestDate: reqDate,
-	}
-
-	if response, err = pullSimobiAPI(c, cm.Config.PushStatusURL, msg); err != nil {
-		return
-	}
-
-	remark := response.ResponseCode + ":" + response.ResponseMessage
-
-	switch response.ResponseCode {
-	case "00":
-		return
-	case "09":
-		err = ex.Errorc(be.ERR_TRX_UNAUTHORIZED).Rem(remark)
-	default:
-		err = ex.Errorc(be.ERR_OTHERS).Rem(remark)
-	}
-	return
-}
-
-
-func pullSimobiAPI(c *HttpClient, url string, msg *cm.SimobiPull) (response *cm.SimobiCallBack, err *ex.AppError) {
-	var (
-		body       []byte
-		e          error
-		statusCode int		
-	)
-
-	if strings.HasPrefix(url, "/") {
-		url = fmt.Sprintf("%s%s", cm.Config.SnapURL, url)
-	} else {
-		url = fmt.Sprintf("%s/%s", cm.Config.SnapURL, url)
-	}
-
-	if body, e = json.Marshal(msg); e != nil {
-		err = ex.Error(e, be.ERR_INVALID_FORMAT).Rem("Unable to marshal request to json format")
-		return
-	}
-
-	//initiliaze request
-	if post, e := http.NewRequest("POST", strings.TrimSpace(url), bytes.NewBuffer(body)); e != nil {
-		err = ex.Error(e, be.ERR_OTHERS).Rem("Unable to create new http request")
-		return
-
-	} else {
-		//assign headers
-		if c.ServerKey == "" {
-			if err = getSimobiToken(c); err != nil {
-				return
-			}
-		}
-
-		post.Header.Add("Accept", "application/json; charset=utf-8")
-		post.Header.Add("Content-Type", "application/json")
-		post.Header.Add("x-ibm-client-id", cm.Config.IbmClientId)
-		post.Header.Add("Authorization", fmt.Sprintf("Bearer %s", c.ServerKey))
-
-		//dump message for logging
-		if dump, e := httputil.DumpRequestOut(post, true); e != nil {
-			err = ex.Error(e, be.ERR_OTHERS).Rem("Error in dump request")
-			return
-		} else {			
-			log.WithFields(log.Fields{
-				"request": string(dump),
-				"url" :     url,
-			  }).Info("Sending HTTP request")
-		}
-
-		if res, e := c.Session.Do(post); e != nil {
-			if isTimeout(e) {
-				err = ex.Errorc(be.ERR_TIMEOUT).Rem("Timeout detected")
-			} else {
-				err = ex.Errorc(be.ERR_OTHERS).Rem("Unable to send POST to %s", url)
-			}
-			return
-
-		} else {
-			defer res.Body.Close()
-
-			//dump response for logging
-			if dump, e := httputil.DumpResponse(res, true); e != nil {
-				err = ex.Error(e, be.ERR_OTHERS).Rem("Error in dump response")
-				return
-			} else {
-				statusCode = res.StatusCode				
-				log.WithFields(log.Fields{
-					"request": string(dump),
-					"url" :     url,
-				  }).Info("Sending HTTP request")
-			}
-
-			if res.StatusCode == http.StatusNotFound {
-				err = ex.Error(e, be.ERR_OTHERS).Rem("Service not available")
-				return
-			}
-
-			if body, e = ioutil.ReadAll(res.Body); err != nil {
-				err = ex.Error(e, be.ERR_OTHERS).Rem("Unable to fetch response body")
-				return
-			}
-
-			if e = json.Unmarshal(body, &response); e != nil {
-				err = ex.Error(e, be.ERR_INVALID_FORMAT).Rem("Unable to decode response")
-				return
-			}
-
-			response.HTTPStatus = statusCode
+func buildResponse(err *ex.AppError) *be.Result {
+	if err != nil {
+		return &be.Result{
+			Code:   err.ErrCode,
+			Remark: err.Remark,
 		}
 	}
 
-	return
+	return &be.Result{
+		Code:   be.ERR_SUCCESS,
+		Remark: "Success",
+	}
 }
 
-func (c *HttpClient) PushInvoice(invoiceNo string, mobileNo string, itemName string, qty, amount int64, txtype string, category string) (response *cm.SimobiResponse, err *ex.AppError) {
-	curTime := time.Now()
-	ReqDate := curTime.Format("02-01-2006 15:04:05")
-
-	msg := &cm.SimobiRequest{
-		BillerCode:   cm.Config.MerchantID[category],
-		MobileNumber: mobileNo,
-		TxID:         invoiceNo,
-		ItemName:     fmt.Sprintf("%s", itemName),
-		TxType:       txtype,
-		Qty:          fmt.Sprintf("%d", qty),
-		Amount:       fmt.Sprintf("%d", amount),
-		TxDate:       ReqDate,
+func initResponseFromRequest(req be.Message) be.Message {
+	return be.Message{
+		OriginHost: cm.Config.OriginHost,
+		Version:    "1.0",
+		MsgID:      req.MsgID,
+		Response:   &be.ResponseMessage{},
 	}
-
-	if response, err = submitSimobiAPI(c, cm.Config.PushInvoiceURL, msg); err != nil {
-		return
-	}
-
-	remark := response.ResponseCode + ":" + response.ResponseMessage
-
-	switch response.ResponseCode {
-	case "00":
-		return
-	case "09":
-		err = ex.Errorc(be.ERR_TRX_UNAUTHORIZED).Rem(remark)
-	case "06":
-		err = ex.Errorc(be.ERR_ACCOUNT_NOT_FOUND).Rem(remark)
-	default:
-		err = ex.Errorc(be.ERR_OTHERS).Rem(remark)
-	}
-	return
 }
 
-func submitSimobiAPI(c *HttpClient, url string, msg *cm.SimobiRequest) (response *cm.SimobiResponse, err *ex.AppError) {
-	var (
-		body       []byte
-		e          error
-		statusCode int
-	)
-
-	if strings.HasPrefix(url, "/") {
-		url = fmt.Sprintf("%s%s", cm.Config.SnapURL, url)
-	} else {
-		url = fmt.Sprintf("%s/%s", cm.Config.SnapURL, url)
+func NormalizeMDN(mdn string) string {
+	if _, err := strconv.ParseFloat(mdn, 64); err != nil {
+		return ""
+	} else if len(mdn) > 20 {
+		return ""
 	}
 
-	if body, e = json.Marshal(msg); e != nil {
-		err = ex.Error(e, be.ERR_INVALID_FORMAT).Rem("Unable to marshal request to json format")
-		return
+	if strings.HasPrefix(mdn, "62") {
+		return mdn
+	} else if strings.HasPrefix(mdn, "+62") {
+		return strings.Replace(mdn, "+62", "62", 1)
+	} else if strings.HasPrefix(mdn, "0") {
+		return strings.Replace(mdn, "0", "62", 1)
 	}
 
-	//initiliaze request
-	if post, e := http.NewRequest("POST", strings.TrimSpace(url), bytes.NewBuffer(body)); e != nil {
-		err = ex.Error(e, be.ERR_OTHERS).Rem("Unable to create new http request")
-		return
+	return mdn
+}
 
-	} else {
-		//assign headers
-		if c.ServerKey == "" {
-			if err = getSimobiToken(c); err != nil {
-				return
-			}
-		}
+func NewSnapClient() (client *HttpClient, err *ex.AppError) {
+	transport := &http.Transport{}
+	if strings.HasPrefix(cm.Config.SnapURL, "https") {
+		transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+	}
 
-		post.Header.Add("Accept", "application/json; charset=utf-8")
-		post.Header.Add("Content-Type", "application/json")
-		post.Header.Add("x-ibm-client-id", cm.Config.IbmClientId)
-		post.Header.Add("Authorization", fmt.Sprintf("Bearer %s", c.ServerKey))
-
-		//dump message for logging
-		if dump, e := httputil.DumpRequestOut(post, true); e != nil {
-			err = ex.Error(e, be.ERR_OTHERS).Rem("Error in dump request")
+	if cm.Config.ProxyURL != "" {
+		if pUrl, e := url.Parse(cm.Config.ProxyURL); err != nil {
+			err = ex.Error(e, be.ERR_OTHERS).Rem("Unable to parse proxy url")
 			return
 		} else {
-			log.WithFields(log.Fields{
-				"request": string(dump),
-				"url":     url,
-			}).Info("Sending HTTP request")
+			transport.Proxy = http.ProxyURL(pUrl)
 		}
+	}
 
-		if res, e := c.Session.Do(post); e != nil {
-			if isTimeout(e) {
-				err = ex.Errorc(be.ERR_TIMEOUT).Rem("Timeout detected")
-			} else {
-				err = ex.Errorc(be.ERR_OTHERS).Rem("Unable to send POST to %s", url)
-			}
-			return
-
-		} else {
-			defer res.Body.Close()
-
-			//dump response for logging
-			if dump, e := httputil.DumpResponse(res, true); e != nil {
-				err = ex.Error(e, be.ERR_OTHERS).Rem("Error in dump response")
-				return
-			} else {
-				statusCode = res.StatusCode
-				log.WithFields(log.Fields{
-					"status":   statusCode,
-					"response": string(dump),
-				}).Info("Receiving HTTP response")
-			}
-
-			if res.StatusCode == http.StatusNotFound {
-				err = ex.Error(e, be.ERR_OTHERS).Rem("Service not available")
-				return
-			}
-
-			if body, e = ioutil.ReadAll(res.Body); err != nil {
-				err = ex.Error(e, be.ERR_OTHERS).Rem("Unable to fetch response body")
-				return
-			}
-
-			if e = json.Unmarshal(body, &response); e != nil {
-				err = ex.Error(e, be.ERR_INVALID_FORMAT).Rem("Unable to decode response")
-				return
-			}
-
-			response.HTTPStatus = statusCode
-		}
+	client = &HttpClient{
+		Session: &http.Client{
+			Timeout:   time.Duration(cm.Config.Timeout) * time.Millisecond,
+			Transport: transport,
+		},
 	}
 
 	return
 }
 
-func (c *HttpClient) PushRefund( invoiceNo string, authCode string, category string, amount int64) (response *cm.SimobiCallBack, err *ex.AppError) {
-	curTime := time.Now()
-	ReqDate := curTime.Format("02-01-2006 15:04:05")
+func checkErrorCodes(responseCode int, responseMessage string) *ex.AppError {
 
-	msg := &cm.SimobiRequest{
-		TxID:         invoiceNo,
-		TxDate:       ReqDate,
-		BillerCode:   cm.Config.MerchantID[category],
-		AuthCode:     authCode,
-		Amount: 	  fmt.Sprintf("%d", amount),
-	}
+	strMsg := fmt.Sprintf("%d - %s", responseCode, responseMessage)
 
-	if response, err = refundSimobiAPI(c, cm.Config.RefundURL, msg); err != nil {
-		return
-	}
+	switch int(responseCode) {
+	case 0:
+		return nil
+	case 2:
+		return ex.Errorc(be.ERR_TRX_UNAUTHORIZED).Rem(strMsg)
 
-	remark := response.ResponseCode + ":" + response.ResponseMessage
+	case 7, 9:
+		return ex.Errorc(be.ERR_INVALID_FORMAT).Rem(strMsg)
 
-	switch response.ResponseCode {
-	case "00":
-		return
-	case "09":
-		err = ex.Errorc(be.ERR_TRX_UNAUTHORIZED).Rem(remark)
-	case "06":
-		err = ex.Errorc(be.ERR_ACCOUNT_NOT_FOUND).Rem(remark)
+	case 6, 14:
+		return ex.Errorc(be.ERR_ACCOUNT_NOT_FOUND).Rem(strMsg)
+
+	case 8, 51, 61:
+		return ex.Errorc(be.ERR_TRX_INVALID).Rem(strMsg)
+
 	default:
-		err = ex.Errorc(be.ERR_OTHERS).Rem(remark)
+		return ex.Errorc(be.ERR_OTHERS).Rem(strMsg)
+
 	}
-	return
 }
 
-func refundSimobiAPI(c *HttpClient, url string, msg *cm.SimobiRequest) (response *cm.SimobiCallBack, err *ex.AppError) {
-	var (
-		body       []byte
-		e          error
-		statusCode int
-	)
-
-	if strings.HasPrefix(url, "/") {
-		url = fmt.Sprintf("%s%s", cm.Config.SnapURL, url)
-	} else {
-		url = fmt.Sprintf("%s/%s", cm.Config.SnapURL, url)
-	}
-
-	if body, e = json.Marshal(msg); e != nil {
-		err = ex.Error(e, be.ERR_INVALID_FORMAT).Rem("Unable to marshal request to json format")
-		return
-	}
-
-	//initiliaze request
+func InspectResponseCode(msg *cm.SimobiCallBack) *ex.AppError {
 	
-	if post, e := http.NewRequest("POST", strings.TrimSpace(url), bytes.NewBuffer(body)); e != nil {
-		err = ex.Error(e, be.ERR_OTHERS).Rem("Unable to create new http request")
-		return
-
-	} else {
-		//assign headers
-		if c.ServerKey == "" {
-			if err = getSimobiToken(c); err != nil {
-				return
-			}
-		}
-
-		post.Header.Add("Accept", "application/json; charset=utf-8")
-		post.Header.Add("Content-Type", "application/json")
-		post.Header.Add("x-ibm-client-id", cm.Config.IbmClientId)
-		post.Header.Add("Authorization", fmt.Sprintf("Bearer %s", c.ServerKey))
-
-		//dump message for logging
-		if dump, e := httputil.DumpRequestOut(post, true); e != nil {
-			err = ex.Error(e, be.ERR_OTHERS).Rem("Error in dump request")
-			return
-		} else {
-			log.WithFields(log.Fields{
-				"request": string(dump),
-				"url":     url,
-			}).Info("Sending HTTP request")
-		}
-
-		if res, e := c.Session.Do(post); e != nil {
-			if isTimeout(e) {
-				err = ex.Errorc(be.ERR_TIMEOUT).Rem("Timeout detected")
-			} else {
-				err = ex.Errorc(be.ERR_OTHERS).Rem("Unable to send POST to %s", url)
-			}
-			return
-
-		} else {
-			defer res.Body.Close()
-
-			//dump response for logging
-			if dump, e := httputil.DumpResponse(res, true); e != nil {
-				err = ex.Error(e, be.ERR_OTHERS).Rem("Error in dump response")
-				return
-			} else {
-				statusCode = res.StatusCode
-				log.WithFields(log.Fields{
-					"status":   statusCode,
-					"response": string(dump),
-				}).Info("Receiving HTTP response")
-			}
-
-			if res.StatusCode == http.StatusNotFound {
-				err = ex.Error(e, be.ERR_OTHERS).Rem("Service not available")
-				return
-			}
-
-			if body, e = ioutil.ReadAll(res.Body); err != nil {
-				err = ex.Error(e, be.ERR_OTHERS).Rem("Unable to fetch response body")
-				return
-			}
-
-			if e = json.Unmarshal(body, &response); e != nil {
-				err = ex.Error(e, be.ERR_INVALID_FORMAT).Rem("Unable to decode response ssss")
-				return
-			}
-
-			
-		}
+	switch  {
+		case msg.DataStatus.Status == "submitted":			
+			return ex.Errorc(be.ERR_IN_PROGRESS).Rem("in progress")
+		case msg.DataStatus.Status == "paid":			
+			return ex.Errorc(be.ERR_SUCCESS).Rem("Success")
+		case msg.ResponseCode == "01" || msg.ResponseCode == "97" || msg.ResponseCode == "99":	
+			return ex.Errorc(be.ERR_TRX_INVALID).Rem("Failed - Catch Error")
+		case msg.ResponseCode == "02" || msg.ResponseCode == "98":	
+			return ex.Errorc(be.ERR_PAYMENT_IN_PROGRESS).Rem("pending")
+		case msg.ResponseCode == "06":	
+			return ex.Errorc(be.ERR_ACCOUNT_NOT_FOUND).Rem("User not Found")
+		case msg.ResponseCode == "08":	
+			return ex.Errorc(be.ERR_TRX_DUPLICATE).Rem("txId is already Exist")
+		case msg.ResponseCode == "51":	
+			return ex.Errorc(be.ERR_PAYMENT_DECLINED).Rem("Insufficient balance")
+		case msg.ResponseCode == "61":	
+			return ex.Errorc(be.ERR_TRX_UNAUTHORIZED).Rem("Amount limit exceeded")								
+		default:			
+			return ex.Errorc(be.ERR_OTHERS).Rem(msg.ResponseCode, msg.ResponseMessage)
 	}
 
-	return
 }

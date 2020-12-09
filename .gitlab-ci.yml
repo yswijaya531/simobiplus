@@ -20,7 +20,7 @@ build_app:
     - export http_proxy="http://10.0.0.178:8080"
     - export https_proxy="http://10.0.0.178:8080"
     - apk add git
-    - go get -u "github.com/sirupsen/logrus"
+    - go get -u "github.com/Sirupsen/logrus"
     - go get -u "github.com/go-kit/kit/endpoint"
     - go get -u "github.com/go-kit/kit/transport/http"
     - go get -u "github.com/kelseyhightower/envconfig"
@@ -45,7 +45,7 @@ build_app_dev:
     - export http_proxy="http://10.0.0.178:8080"
     - export https_proxy="http://10.0.0.178:8080"
     - apk add git
-    - go get -u "github.com/sirupsen/logrus"
+    - go get -u "github.com/Sirupsen/logrus"
     - go get -u "github.com/go-kit/kit/endpoint"
     - go get -u "github.com/go-kit/kit/transport/http"
     - go get -u "github.com/kelseyhightower/envconfig"

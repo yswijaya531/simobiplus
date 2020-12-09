@@ -19,7 +19,9 @@ import (
 	"os"
 
 	"github.com/kelseyhightower/envconfig"
+
 	log "github.com/sirupsen/logrus"
+
 	be "github.com/wolvex/paymentaggregator"
 )
 

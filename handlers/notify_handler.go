@@ -6,7 +6,6 @@ import (
 	"time"
 
 	cm "github.com/yswijaya531/simobiplus/common"
-	"github.com/yswijaya531/simobiplus/helpers"
 
 	"github.com/labstack/echo"
 
@@ -96,7 +95,7 @@ func processNotify(req *be.Message) {
 
 	result := &be.Result{}
 	
-	if err = helpers.InspectResponseCode(response); err == nil {
+	if err = InspectResponseCode(response); err == nil {
 		result.Code = be.ERR_SUCCESS
 		result.Remark = "Success"
 	} else {

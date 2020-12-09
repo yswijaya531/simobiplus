@@ -5,7 +5,6 @@ import (
 	"strconv"
 
 	cm "github.com/yswijaya531/simobiplus/common"
-	"github.com/yswijaya531/simobiplus/helpers"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/labstack/echo"
@@ -48,7 +47,7 @@ func CallBackHandler(e echo.Context) (res cm.SimobiCallBack, errs error) {
 	
 	var request *cm.SimobiCallBack
 	
-	if err = helpers.InspectResponseCode(request); err == nil {
+	if err = InspectResponseCode(request); err == nil {
 		result.Code = be.ERR_SUCCESS
 		result.Remark = "Success"
 	} else {

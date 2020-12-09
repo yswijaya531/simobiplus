@@ -20,7 +20,7 @@ import (
 
 	"github.com/kelseyhightower/envconfig"
 
-	log "github.com/sirupsen/logrus"
+	log "github.com/Sirupsen/logrus"
 
 	be "github.com/wolvex/paymentaggregator"
 )

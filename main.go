@@ -7,7 +7,7 @@ import (
 	cm "github.com/yswijaya531/simobiplus/common"
 	"github.com/yswijaya531/simobiplus/routes"
 
-	log "github.com/sirupsen/logrus"
+	log "github.com/Sirupsen/logrus"
 )
 
 var logger *log.Entry

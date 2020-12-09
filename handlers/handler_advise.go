@@ -12,6 +12,8 @@ import (
 
 func AdviseHandler(req be.Message) (res be.Message, errs error) {
 
+	defer panicRecovery()
+	
 	var err *ex.AppError
 
 	defer func() {

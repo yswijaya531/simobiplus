@@ -1,0 +1,264 @@
+stages:
+  - build_app
+  - build_app_dev
+  - build_image
+  - build_image_dev
+  - deploy_dev
+  - deploy_factory
+  - deploy_assembly
+  - deploy_works
+  - deploy_prod
+
+variables:
+  GIT_SSL_NO_VERIFY: "true"
+
+
+build_app:
+  image: devops-registry.smartfren.com/devops/golang:1.14.3-alpine3.11
+  stage: build_app
+  script:
+    - export http_proxy="http://10.0.0.178:8080"
+    - export https_proxy="http://10.0.0.178:8080"
+    - apk add git
+    - go get -u "github.com/Sirupsen/logrus"
+    - go get -u "github.com/go-kit/kit/endpoint"
+    - go get -u "github.com/go-kit/kit/transport/http"
+    - go get -u "github.com/kelseyhightower/envconfig"
+    - go get -u "github.com/wolvex/go/error"
+    - go get -u "github.com/wolvex/paymentaggregator"
+    - go get -u "github.com/rs/xid"
+    - env GO111MODULE=off GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -a -ldflags '-extldflags "-static"'  -o  simobiplus main.go
+  artifacts:
+    paths:
+      - simobiplus
+  when: on_success
+  only:
+      - factory
+      - assembly
+      - works
+      - tags
+
+build_app_dev:
+  image: devops-registry.smartfren.com/devops/golang:1.14.3-alpine3.11
+  stage: build_app
+  script:
+    - export http_proxy="http://10.0.0.178:8080"
+    - export https_proxy="http://10.0.0.178:8080"
+    - apk add git
+    - go get -u "github.com/Sirupsen/logrus"
+    - go get -u "github.com/go-kit/kit/endpoint"
+    - go get -u "github.com/go-kit/kit/transport/http"
+    - go get -u "github.com/kelseyhightower/envconfig"
+    - go get -u "github.com/wolvex/go/error"
+    - go get -u "github.com/wolvex/paymentaggregator"
+    - go get -u "github.com/rs/xid"
+    - env GO111MODULE=off GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -a -ldflags '-extldflags "-static"'  -o  simobiplus main.go
+  artifacts:
+    paths:
+      - simobiplus
+  when: manual
+  except:
+      - factory
+      - assembly
+      - works
+      - tags
+
+
+build_image:
+  image: docker:18.09.7-dind-git
+  stage: build_image
+  tags:
+     - docker-dind
+  variables:
+    DOCKER_HOST: tcp://docker:2375/
+    DOCKER_DRIVER: overlay2
+  services:
+    - name: docker:18.09.7-dind
+  script:
+    - BASE_URL=`echo $CI_REPOSITORY_URL | sed "s;\/*$CI_PROJECT_PATH.*;;"`
+    - REPO_URL="$BASE_URL/devops/docker/docker-registry-prod.git"
+    - rm -fr registry; git clone $REPO_URL registry
+    - DOCKER_REGISTRY=$(cat registry/DOCKER_REGISTRY_DNS)
+    - export IMGVER=$(echo $CI_BUILD_REF_NAME |  sed 's/\//_/g' )      
+    - cat registry/password  | docker login -u $(cat registry/user)  --password-stdin ${DOCKER_REGISTRY} 
+    - docker build -t "${DOCKER_REGISTRY}/marketing/pa-simobiplus:$IMGVER" -f docker/Dockerfile .    
+    - docker push "${DOCKER_REGISTRY}/marketing/pa-simobiplus:$IMGVER"
+  when: on_success
+  only:
+      - factory
+      - assembly
+      - works
+      - tags
+
+
+build_image_dev:
+  image: docker:18.09.7-dind-git
+  stage: build_image
+  tags:
+     - docker-dind
+  variables:
+    DOCKER_HOST: tcp://docker:2375/
+    DOCKER_DRIVER: overlay2
+  services:
+    - name: docker:18.09.7-dind
+  script:
+    - BASE_URL=`echo $CI_REPOSITORY_URL | sed "s;\/*$CI_PROJECT_PATH.*;;"`
+    - REPO_URL="$BASE_URL/devops/docker/docker-registry-prod.git"
+    - rm -fr registry; git clone $REPO_URL registry
+    - DOCKER_REGISTRY=$(cat registry/DOCKER_REGISTRY_DNS)
+    - export IMGVER=$(echo $CI_BUILD_REF_NAME |  sed 's/\//_/g' )      
+    - cat registry/password  | docker login -u $(cat registry/user)  --password-stdin ${DOCKER_REGISTRY} 
+    - docker build -t "${DOCKER_REGISTRY}/marketing/pa-simobiplus-dev:$IMGVER" -f docker/Dockerfile .    
+    - docker push "${DOCKER_REGISTRY}/marketing/pa-simobiplus-dev:$IMGVER"
+  when: manual
+  except:
+      - factory
+      - assembly
+      - works
+      - tags
+
+
+deploy_dev:
+  image: docker:18.09.7-dind-git
+  stage: deploy_dev
+  environment: Development
+  tags:
+     - docker-dind
+  variables:
+    DOCKER_HOST: "tcp://10.0.148.216:2376"
+    DOCKER_TLS_VERIFY: 1
+  script:
+    - BASE_URL=`echo $CI_REPOSITORY_URL | sed "s;\/*$CI_PROJECT_PATH.*;;"`
+    - REG_URL="${BASE_URL}/devops/docker/docker-registry-prod.git"
+    - REPO_URL="$BASE_URL/devops/payment-aggr/swarm-pa-dev.git"     
+    - rm -fr regf; git clone ${REG_URL}  regf
+    - rm -fr cred; git clone ${REPO_URL} cred
+    - export DOCKER_REGISTRY=$(cat regf/DOCKER_REGISTRY_DNS)
+    - export IMGVER=$(echo $CI_BUILD_REF_NAME |  sed 's/\//_/g' )      
+    - mkdir -p ~/.docker          
+    - cp cred/ca.pem    ~/.docker/ca.pem
+    - cp cred/cert.pem  ~/.docker/cert.pem
+    - cp cred/key.pem   ~/.docker/key.pem
+    - cat regf/password  | docker login -u $(cat regf/user) --password-stdin ${DOCKER_REGISTRY}      
+    - docker stack deploy -c docker/docker-compose.dev.yml --with-registry-auth paggr_dev
+  except:
+    - factory
+    - assembly
+    - works
+    - tags
+  when: manual
+
+deploy_factory:
+  image: docker:18.09.7-dind-git
+  stage: deploy_factory
+  environment: Development
+  tags:
+     - docker-dind
+  variables:
+    DOCKER_HOST: "tcp://10.0.148.216:2376"
+    DOCKER_TLS_VERIFY: 1
+  script:
+    - BASE_URL=`echo $CI_REPOSITORY_URL | sed "s;\/*$CI_PROJECT_PATH.*;;"`
+    - REG_URL="${BASE_URL}/devops/docker/docker-registry-prod.git"
+    - REPO_URL="$BASE_URL/devops/payment-aggr/swarm-pa-dev.git"     
+    - rm -fr regf; git clone ${REG_URL}  regf
+    - rm -fr cred; git clone ${REPO_URL} cred
+    - export DOCKER_REGISTRY=$(cat regf/DOCKER_REGISTRY_DNS)
+    - export IMGVER=$(echo $CI_BUILD_REF_NAME |  sed 's/\//_/g' )      
+    - mkdir -p ~/.docker          
+    - cp cred/ca.pem    ~/.docker/ca.pem
+    - cp cred/cert.pem  ~/.docker/cert.pem
+    - cp cred/key.pem   ~/.docker/key.pem
+    - cat regf/password  | docker login -u $(cat regf/user) --password-stdin ${DOCKER_REGISTRY}      
+    - docker stack deploy -c docker/docker-compose.factory.yml --with-registry-auth paggr_factory
+  only:
+    - factory
+  when: on_success
+
+
+deploy_assembly:
+  image: docker:18.09.7-dind-git
+  stage: deploy_assembly
+  environment: Testbed
+  tags:
+     - docker-dind
+  variables:
+    DOCKER_HOST: "tcp://10.0.148.201:2376"
+    DOCKER_TLS_VERIFY: 1
+  script:
+     - BASE_URL=`echo $CI_REPOSITORY_URL | sed "s;\/*$CI_PROJECT_PATH.*;;"`
+     - REGISTRY_URL="${BASE_URL}/devops/docker/docker-registry-prod.git"
+     - CLONE_TO=registry_tmp; rm -rf ${CLONE_TO}
+     - git clone ${REGISTRY_URL} ${CLONE_TO}
+     - export DOCKER_REGISTRY=$(cat ${CLONE_TO}/DOCKER_REGISTRY_DNS)
+     - BASE_URL=`echo $CI_REPOSITORY_URL | sed "s;\/*$CI_PROJECT_PATH.*;;"`
+     - REPO_URL="$BASE_URL/devops/mysf/mysf-staging.git"
+     - rm -fr cred; git clone $REPO_URL cred; mkdir -p ~/.docker
+     - cat cred/ca.pem   > ~/.docker/ca.pem
+     - cat cred/cert.pem > ~/.docker/cert.pem
+     - cat cred/key.pem  > ~/.docker/key.pem
+     - export IMGVER=$(echo $CI_BUILD_REF_NAME |  sed 's/\//_/g' )      
+     - cat registry_tmp/password  | docker login -u $(cat registry_tmp/user)  --password-stdin ${DOCKER_REGISTRY}
+     - docker stack deploy --compose-file docker/docker-compose.assembly.yml --with-registry-auth paggr_assembly
+  when: on_success
+  only:
+    - assembly
+
+
+deploy_works:
+  image: docker:18.09.7-dind-git
+  stage: deploy_works
+  environment: Staging
+  tags:
+     - docker-dind
+  variables:
+    DOCKER_HOST: "tcp://10.0.148.201:2376"
+    DOCKER_TLS_VERIFY: 1
+  script:
+     - BASE_URL=`echo $CI_REPOSITORY_URL | sed "s;\/*$CI_PROJECT_PATH.*;;"`
+     - REGISTRY_URL="${BASE_URL}/devops/docker/docker-registry-prod.git"
+     - CLONE_TO=registry_tmp; rm -rf ${CLONE_TO}
+     - git clone ${REGISTRY_URL} ${CLONE_TO}
+     - export DOCKER_REGISTRY=$(cat ${CLONE_TO}/DOCKER_REGISTRY_DNS)
+     - BASE_URL=`echo $CI_REPOSITORY_URL | sed "s;\/*$CI_PROJECT_PATH.*;;"`
+     - REPO_URL="$BASE_URL/devops/mysf/mysf-staging.git"
+     - rm -fr cred; git clone $REPO_URL cred; mkdir -p ~/.docker
+     - cat cred/ca.pem   > ~/.docker/ca.pem
+     - cat cred/cert.pem > ~/.docker/cert.pem
+     - cat cred/key.pem  > ~/.docker/key.pem
+     - export IMGVER=$(echo $CI_BUILD_REF_NAME |  sed 's/\//_/g' )      
+     - cat registry_tmp/password  | docker login -u $(cat registry_tmp/user)  --password-stdin ${DOCKER_REGISTRY}
+     - docker stack deploy --compose-file docker/docker-compose.works.yml --with-registry-auth paggr_works
+  when: on_success
+  only:
+    - works
+    - tags  
+
+
+deploy_prod:
+  image: docker:18.09.7-dind-git
+  stage: deploy_prod
+  environment: Production
+  tags:
+     - docker-dind
+  variables:
+    DOCKER_HOST: "tcp://10.16.49.126:2376"
+    DOCKER_TLS_VERIFY: 1
+  script:
+     - BASE_URL=`echo $CI_REPOSITORY_URL | sed "s;\/*$CI_PROJECT_PATH.*;;"`
+     - REGISTRY_URL="${BASE_URL}/devops/docker/docker-registry-prod.git"
+     - CLONE_TO=registry_tmp; rm -rf ${CLONE_TO}
+     - git clone ${REGISTRY_URL} ${CLONE_TO}
+     - export DOCKER_REGISTRY=$(cat ${CLONE_TO}/DOCKER_REGISTRY_DNS)
+     - BASE_URL=`echo $CI_REPOSITORY_URL | sed "s;\/*$CI_PROJECT_PATH.*;;"`
+     - REPO_URL="$BASE_URL/devops/payment-aggr/swarm-prod.git"
+     - rm -fr cred; git clone $REPO_URL cred; mkdir -p ~/.docker
+     - cat cred/ca.pem   > ~/.docker/ca.pem
+     - cat cred/cert.pem > ~/.docker/cert.pem
+     - cat cred/key.pem  > ~/.docker/key.pem
+     - export IMGVER=$(echo $CI_BUILD_REF_NAME |  sed 's/\//_/g' )      
+     - cat registry_tmp/password  | docker login -u $(cat registry_tmp/user)  --password-stdin ${DOCKER_REGISTRY}      
+     - docker stack deploy --compose-file docker/docker-compose.prod.yml --with-registry-auth paggr
+  when: manual
+  only:
+    - tags

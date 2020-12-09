@@ -16,8 +16,20 @@ var result be.Message
 
 func AdviseControllers(c echo.Context) (errs error) {
 	
-	result, errs := handlers.CallBackHandler(c)
+	req := new(be.Message)
+		
+	if errs = c.Bind(req); errs != nil {
+		return  errs
+	}
+		
+	msg := *req 
 
+	if mw.CheckAuth(msg) {	
+		result, errs = handlers.AdviseHandler(msg)					
+	}  else {
+	 	result = mw.BuildResponse(result, be.ERR_INVALID_SIGNATURE, "Signature invalid")
+	}
+		
 	defer func(begin time.Time) {
 		elapsed := float64(time.Since(begin).Nanoseconds()) / float64(1e6)
 		log.WithFields(log.Fields{

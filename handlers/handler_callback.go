@@ -30,7 +30,7 @@ func CallBackHandler(e echo.Context) (res cm.SimobiCallBack, errs error) {
 		}
 	}()
 
-	//initialize response, echoed from request
+	//initialize callback struct
 	req := new(cm.SimobiCallBack)
 		
 	if errs = e.Bind(req); err != nil {

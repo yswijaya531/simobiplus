@@ -23,7 +23,6 @@ func PaymentHandler(req be.Message) (res be.Message, errs error) {
 		res.Response.Result = buildResponse(err)
 	}()
 	
-	
 	if req.Request == nil || req.Request.Order == nil || req.Request.Payment == nil ||
 		req.Request.Payment.Partner == nil || req.Request.Payment.Resource == nil {
 		err = ex.Errorc(be.ERR_PARAM_MISSING).Rem("Missing mandatory parameter")

@@ -7,8 +7,6 @@ import (
 
 	cm "github.com/yswijaya531/simobiplus/common"
 
-	"github.com/labstack/echo"
-
 	log "github.com/Sirupsen/logrus"
 	ex "github.com/wolvex/go/error"
 	be "github.com/wolvex/paymentaggregator"
@@ -22,7 +20,7 @@ type Response struct {
 	Data    interface{} `json:"data,omitempty"`
 }
 
-func NotifyHandler(e echo.Context) (res be.Message, errs error) {
+func NotifyHandler(req be.Message) (res be.Message, errs error) {
 	
 	//defer panicRecovery()
 
@@ -34,15 +32,8 @@ func NotifyHandler(e echo.Context) (res be.Message, errs error) {
 		}
 	}()
 		
-	req := new(be.Message)
-		
-	if errs = e.Bind(req); err != nil {
-		return res, errs
-	}
 	
-	var reqs be.Message
-
-	res = initResponseFromRequest(reqs)
+	res = initResponseFromRequest(req)
 	res.Response.Order = req.Request.Order	
 	res.Response.Result = &be.Result{
 		Code:   be.ERR_SUCCESS,
@@ -55,7 +46,7 @@ func NotifyHandler(e echo.Context) (res be.Message, errs error) {
 	
 }
 
-func processNotify(req *be.Message) {
+func processNotify(req be.Message) {
 	
 	var e error	
 

@@ -6,15 +6,17 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 
-	"github.com/yswijaya531/simobiplus/handlers"
-
 	"github.com/labstack/echo"
+	be "github.com/wolvex/paymentaggregator"
+	"github.com/yswijaya531/simobiplus/handlers"
+	mw "github.com/yswijaya531/simobiplus/middleware"
 )
 
+var result be.Message
 
-func AdviseControllers(c echo.Context) (err error) {
+func AdviseControllers(c echo.Context) (errs error) {
 	
-	result, err := handlers.NotifyHandler(c)
+	result, errs := handlers.CallBackHandler(c)
 
 	defer func(begin time.Time) {
 		elapsed := float64(time.Since(begin).Nanoseconds()) / float64(1e6)
@@ -28,9 +30,9 @@ func AdviseControllers(c echo.Context) (err error) {
 
 }
 
-func CallBackControllers(c echo.Context) (err error) {
+func CallBackControllers(c echo.Context) (errs error) {
 	
-	result, err := handlers.CallBackHandler(c)
+	result, errs := handlers.CallBackHandler(c)
 
 	defer func(begin time.Time) {
 		elapsed := float64(time.Since(begin).Nanoseconds()) / float64(1e6)
@@ -44,10 +46,22 @@ func CallBackControllers(c echo.Context) (err error) {
 
 }
 
-func NotifyControllers(c echo.Context) (err error) {
-	
-	result, err := handlers.NotifyHandler(c)	
-	
+func NotifyControllers(c echo.Context)  (errs error) {
+		
+	req := new(be.Message)
+		
+	if errs = c.Bind(req); errs != nil {
+		return  errs
+	}
+		
+	msg := *req 
+
+	if mw.CheckAuth(msg) {	
+		result, errs = handlers.NotifyHandler(msg)					
+	}  else {
+	 	result = mw.BuildResponse(result, be.ERR_INVALID_SIGNATURE, "Signature invalid")
+	}
+		
 	defer func(begin time.Time) {
 		elapsed := float64(time.Since(begin).Nanoseconds()) / float64(1e6)
 		log.WithFields(log.Fields{
@@ -60,7 +74,7 @@ func NotifyControllers(c echo.Context) (err error) {
 
 }
 
-func PingControllers(c echo.Context) (err error) {
+func PingControllers(c echo.Context) (errs error) {
 	
 	result := handlers.PingHandler(c)
 
@@ -76,10 +90,22 @@ func PingControllers(c echo.Context) (err error) {
 
 }
 
-func PaymentControllers(c echo.Context) (err error) {
+func PaymentControllers(c echo.Context) (errs error) {
 	
-	result, err := handlers.PaymentHandler(c)
-	
+	req := new(be.Message)
+		
+	if errs = c.Bind(req); errs != nil {
+		return  errs
+	}
+		
+	msg := *req 
+
+	if mw.CheckAuth(msg) {	
+		result, errs = handlers.PaymentHandler(msg)					
+	}  else {
+	 	result = mw.BuildResponse(result, be.ERR_INVALID_SIGNATURE, "Signature invalid")
+	}
+		
 	defer func(begin time.Time) {
 		elapsed := float64(time.Since(begin).Nanoseconds()) / float64(1e6)
 		log.WithFields(log.Fields{
@@ -92,10 +118,22 @@ func PaymentControllers(c echo.Context) (err error) {
 
 }
 
-func VoidControllers(c echo.Context) (err error) {
+func VoidControllers(c echo.Context) (errs error) {
 	
-	result, err := handlers.VoidHandler(c)
+	req := new(be.Message)
+		
+	if errs = c.Bind(req); errs != nil {
+		return  errs
+	}
+		
+	msg := *req 
 
+	if mw.CheckAuth(msg) {	
+		result, errs = handlers.VoidHandler(msg)					
+	}  else {
+	 	result = mw.BuildResponse(result, be.ERR_INVALID_SIGNATURE, "Signature invalid")
+	}
+		
 	defer func(begin time.Time) {
 		elapsed := float64(time.Since(begin).Nanoseconds()) / float64(1e6)
 		log.WithFields(log.Fields{

@@ -14,3 +14,17 @@ func Authorize(msg be.Message) *ex.AppError {
 	}
 	return nil
 }
+
+func BuildResponse(req be.Message, err int, remark string) be.Message {
+	return be.Message{
+		OriginHost: cm.Config.OriginHost,
+		Version:    "1.0",
+		MsgID:      req.MsgID,
+		Response: &be.ResponseMessage{
+			Result: &be.Result{
+				Code:   err,
+				Remark: remark,
+			},
+		},
+	}
+}

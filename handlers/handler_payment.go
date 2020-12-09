@@ -4,13 +4,12 @@ import (
 	cm "github.com/yswijaya531/simobiplus/common"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/labstack/echo"
 	ex "github.com/wolvex/go/error"
 	be "github.com/wolvex/paymentaggregator"
 )
 
 
-func PaymentHandler(e echo.Context) (res be.Message, errs error) {
+func PaymentHandler(req be.Message) (res be.Message, errs error) {
 	var err *ex.AppError
 
 	defer panicRecovery()
@@ -23,13 +22,6 @@ func PaymentHandler(e echo.Context) (res be.Message, errs error) {
 		}
 		res.Response.Result = buildResponse(err)
 	}()
-	
-	req := new(be.Message)
-		
-	if errs = e.Bind(req); err != nil {
-		return res, errs
-	}
-	
 	
 	
 	if req.Request == nil || req.Request.Order == nil || req.Request.Payment == nil ||

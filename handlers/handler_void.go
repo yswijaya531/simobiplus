@@ -4,13 +4,12 @@ import (
 	cm "github.com/yswijaya531/simobiplus/common"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/labstack/echo"
 	ex "github.com/wolvex/go/error"
 	be "github.com/wolvex/paymentaggregator"
 )
 
 
-func VoidHandler(e echo.Context) (res be.Message, errs error) {
+func VoidHandler(req be.Message) (res be.Message, errs error) {
 	var err *ex.AppError
 
 	defer panicRecovery()
@@ -24,12 +23,6 @@ func VoidHandler(e echo.Context) (res be.Message, errs error) {
 		res.Response.Result = buildResponse(err)
 	}()
 	
-	req := new(be.Message)
-		
-	if errs = e.Bind(req); err != nil {
-		return res, errs
-	}
-
 	if req.Request == nil || req.Request.Order == nil || req.Request.Void == nil ||
 		req.Request.Void.Partner == nil || req.Request.Void.Resource == nil || req.Request.Order.Goods == nil {
 		err = ex.Errorc(be.ERR_PARAM_MISSING).Rem("Missing mandatory parameter")

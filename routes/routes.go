@@ -12,7 +12,8 @@ func Init() *echo.Echo {
 	
 	e := echo.New()
 	
-	e.Use(middleware.Logger())
+	e.Use(middleware.BodyDump(func(c echo.Context, reqBody, resBody []byte) {
+	}))
 	
 	SimobiRoutes(e.Group("/paggr-simobi"))
 

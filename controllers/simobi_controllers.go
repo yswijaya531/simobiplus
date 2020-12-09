@@ -24,6 +24,8 @@ func AdviseControllers(c echo.Context) (errs error) {
 		
 	msg := *req 
 
+	log.WithField("info",msg).Info("Decode Request Simobi Advise API")
+
 	if mw.CheckAuth(msg) {	
 		result, errs = handlers.AdviseHandler(msg)					
 	}  else {
@@ -44,6 +46,16 @@ func AdviseControllers(c echo.Context) (errs error) {
 
 func CallBackControllers(c echo.Context) (errs error) {
 	
+	req := new(be.Message)
+		
+	if errs = c.Bind(req); errs != nil {
+		return  errs
+	}
+	
+	msg := *req 
+
+	log.WithField("info",msg).Info("Decode Request Simobi Callback API")
+
 	result, errs := handlers.CallBackHandler(c)
 
 	defer func(begin time.Time) {
@@ -59,14 +71,16 @@ func CallBackControllers(c echo.Context) (errs error) {
 }
 
 func NotifyControllers(c echo.Context)  (errs error) {
-		
+	
 	req := new(be.Message)
 		
 	if errs = c.Bind(req); errs != nil {
 		return  errs
 	}
-		
+	
 	msg := *req 
+
+	log.WithField("info",msg).Info("Decode Request Simobi Notify API")
 
 	if mw.CheckAuth(msg) {	
 		result, errs = handlers.NotifyHandler(msg)					
@@ -112,6 +126,8 @@ func PaymentControllers(c echo.Context) (errs error) {
 		
 	msg := *req 
 
+	log.WithField("info",msg).Info("Decode Request Simobi Payment API")
+
 	if mw.CheckAuth(msg) {	
 		result, errs = handlers.PaymentHandler(msg)					
 	}  else {
@@ -139,6 +155,8 @@ func VoidControllers(c echo.Context) (errs error) {
 	}
 		
 	msg := *req 
+
+	log.WithField("info",msg).Info("Decode  Request Simobi Void API")
 
 	if mw.CheckAuth(msg) {	
 		result, errs = handlers.VoidHandler(msg)					

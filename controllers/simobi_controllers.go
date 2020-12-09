@@ -6,6 +6,8 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 
+	cm "github.com/yswijaya531/simobiplus/common"
+
 	"github.com/labstack/echo"
 	be "github.com/wolvex/paymentaggregator"
 	"github.com/yswijaya531/simobiplus/handlers"
@@ -46,7 +48,7 @@ func AdviseControllers(c echo.Context) (errs error) {
 
 func CallBackControllers(c echo.Context) (errs error) {
 	
-	req := new(be.Message)
+	req := new(cm.SimobiCallBack)
 		
 	if errs = c.Bind(req); errs != nil {
 		return  errs

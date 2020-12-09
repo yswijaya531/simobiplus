@@ -3,7 +3,7 @@ package controllers
 import (
 	"net/http"
 
-	"simobiplus/handlers"
+	"github.com/yswijaya531/simobiplus/handlers"
 
 	"github.com/labstack/echo"
 )

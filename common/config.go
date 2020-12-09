@@ -18,8 +18,8 @@ package common
 import (
 	"os"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/kelseyhightower/envconfig"
+	log "github.com/sirupsen/logrus"
 	be "github.com/wolvex/paymentaggregator"
 )
 

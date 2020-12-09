@@ -1,7 +1,7 @@
 package routes
 
 import (
-	"simobiplus/controllers"
+	"github.com/yswijaya531/simobiplus/controllers"
 
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"

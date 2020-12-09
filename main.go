@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"os"
 
-	cm "simobiplus/common"
-	"simobiplus/routes"
+	cm "github.com/yswijaya531/simobiplus/common"
+	"github.com/yswijaya531/simobiplus/routes"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 )
 
 var logger *log.Entry

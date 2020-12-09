@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	cm "simobiplus/common"
+	cm "github.com/yswijaya531/simobiplus/common"
 
 	ex "github.com/wolvex/go/error"
 	be "github.com/wolvex/paymentaggregator"

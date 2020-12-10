@@ -36,7 +36,7 @@ func main() {
 	if cm.Config.BackendKey != "" || cm.Config.CertificateFile != "" {
 
 		e := routes.Init()
-		e.Logger.Fatal(e.Start(":9662"))
+		e.Logger.Fatal(e.Start(cm.Config.ListenPort))
 
 	} else {
 		

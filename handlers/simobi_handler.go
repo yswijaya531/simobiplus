@@ -88,6 +88,7 @@ func (c *HttpClient) PullInvoice(invoiceNo string, reqDate string) (response *cm
 		TxID:        invoiceNo,
 		RequestDate: reqDate,
 	}
+	
 
 	if response, err = pullSimobiAPI(c, cm.Config.PushStatusURL, msg); err != nil {
 		return
@@ -124,7 +125,7 @@ func pullSimobiAPI(c *HttpClient, url string, msg *cm.SimobiPull) (response *cm.
 		err = ex.Error(e, be.ERR_INVALID_FORMAT).Rem("Unable to marshal request to json format")
 		return
 	}
-
+	
 	//initiliaze request
 	if post, e := http.NewRequest("POST", strings.TrimSpace(url), bytes.NewBuffer(body)); e != nil {
 		err = ex.Error(e, be.ERR_OTHERS).Rem("Unable to create new http request")

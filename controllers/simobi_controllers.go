@@ -30,7 +30,8 @@ func AdviseControllers(c echo.Context) (errs error) {
 	log.WithField("info",msg).Info("Decode Request Simobi Advise API")
 
 	if mw.CheckAuth(msg) {	
-		result, errs = handlers.AdviseHandler(msg)					
+		result, errs = handlers.AdviseHandler(msg)
+		log.WithField("error", errs).Error("Exception caught")					
 	}  else {
 	 	result = mw.BuildResponse(result, be.ERR_INVALID_SIGNATURE, "Signature invalid")
 	}
@@ -56,12 +57,15 @@ func CallBackControllers(c echo.Context) (errs error) {
 		return  errs
 	}
 	
-	msg := *req 
+	result := *req 
 
-	log.WithField("info",msg).Info("Decode Request Simobi Callback API")
+	log.WithField("info",result).Info("Decode Request Simobi Callback API")
 
-	result, errs := handlers.CallBackHandler(c)
-
+	if result, errs = handlers.CallBackHandler(c); errs != nil{
+		log.WithField("error", errs).Error("Exception caught")
+		return errs
+	} 
+	
 	defer func(begin time.Time) {
 		elapsed := float64(time.Since(begin).Nanoseconds()) / float64(1e6)
 		log.WithFields(log.Fields{

@@ -14,12 +14,6 @@ import (
 
 var err *ex.AppError
 
-type Response struct {
-	Status  int         `json:"status"`
-	Message string      `json:"message"`
-	Data    interface{} `json:"data,omitempty"`
-}
-
 func NotifyHandler(req be.Message) (res be.Message, errs error) {
 	
 	defer panicRecovery()

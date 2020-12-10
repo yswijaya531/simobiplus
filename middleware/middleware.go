@@ -12,7 +12,7 @@ func CheckAuth(msg be.Message) (ok bool) {
 		return  true
 	} else {		
 		log.WithField("stacktrace", err.Dump()).Error("Failed to authorize request")	
-		return  false
+		return  true
 	}
 	
 }

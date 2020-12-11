@@ -58,9 +58,9 @@ func getSimobiToken(c *HttpClient) (err *ex.AppError) {
 	} else {
 		statusCode := resp.StatusCode
 		log.WithFields(log.Fields{
-			"request" : string(dump),
-			"statusCode" :     statusCode,
-		  }).Info("Sending HTTP request")
+			"request":    string(dump),
+			"statusCode": statusCode,
+		}).Info("Sending HTTP request")
 	}
 
 	if resp.StatusCode != 200 {
@@ -88,7 +88,6 @@ func (c *HttpClient) PullInvoice(invoiceNo string, reqDate string) (response *cm
 		TxID:        invoiceNo,
 		RequestDate: reqDate,
 	}
-	
 
 	if response, err = pullSimobiAPI(c, cm.Config.PushStatusURL, msg); err != nil {
 		return
@@ -107,12 +106,11 @@ func (c *HttpClient) PullInvoice(invoiceNo string, reqDate string) (response *cm
 	return
 }
 
-
 func pullSimobiAPI(c *HttpClient, url string, msg *cm.SimobiPull) (response *cm.SimobiCallBack, err *ex.AppError) {
 	var (
 		body       []byte
 		e          error
-		statusCode int		
+		statusCode int
 	)
 
 	if strings.HasPrefix(url, "/") {
@@ -125,7 +123,7 @@ func pullSimobiAPI(c *HttpClient, url string, msg *cm.SimobiPull) (response *cm.
 		err = ex.Error(e, be.ERR_INVALID_FORMAT).Rem("Unable to marshal request to json format")
 		return
 	}
-	
+
 	//initiliaze request
 	if post, e := http.NewRequest("POST", strings.TrimSpace(url), bytes.NewBuffer(body)); e != nil {
 		err = ex.Error(e, be.ERR_OTHERS).Rem("Unable to create new http request")
@@ -148,11 +146,11 @@ func pullSimobiAPI(c *HttpClient, url string, msg *cm.SimobiPull) (response *cm.
 		if dump, e := httputil.DumpRequestOut(post, true); e != nil {
 			err = ex.Error(e, be.ERR_OTHERS).Rem("Error in dump request")
 			return
-		} else {			
+		} else {
 			log.WithFields(log.Fields{
 				"request": string(dump),
-				"url" :     url,
-			  }).Info("Sending HTTP request")
+				"url":     url,
+			}).Info("Sending HTTP request")
 		}
 
 		if res, e := c.Session.Do(post); e != nil {
@@ -171,11 +169,11 @@ func pullSimobiAPI(c *HttpClient, url string, msg *cm.SimobiPull) (response *cm.
 				err = ex.Error(e, be.ERR_OTHERS).Rem("Error in dump response")
 				return
 			} else {
-				statusCode = res.StatusCode				
+				statusCode = res.StatusCode
 				log.WithFields(log.Fields{
 					"request": string(dump),
-					"url" :     url,
-				  }).Info("Sending HTTP request")
+					"url":     url,
+				}).Info("Sending HTTP request")
 			}
 
 			if res.StatusCode == http.StatusNotFound {
@@ -326,16 +324,16 @@ func submitSimobiAPI(c *HttpClient, url string, msg *cm.SimobiRequest) (response
 	return
 }
 
-func (c *HttpClient) PushRefund( invoiceNo string, authCode string, category string, amount int64) (response *cm.SimobiCallBack, err *ex.AppError) {
+func (c *HttpClient) PushRefund(invoiceNo string, authCode string, category string, amount int64) (response *cm.SimobiCallBack, err *ex.AppError) {
 	curTime := time.Now()
 	ReqDate := curTime.Format("02-01-2006 15:04:05")
 
 	msg := &cm.SimobiRequest{
-		TxID:         invoiceNo,
-		TxDate:       ReqDate,
-		BillerCode:   cm.Config.MerchantID[category],
-		AuthCode:     authCode,
-		Amount: 	  fmt.Sprintf("%d", amount),
+		TxID:       invoiceNo,
+		TxDate:     ReqDate,
+		BillerCode: cm.Config.MerchantID[category],
+		AuthCode:   authCode,
+		Amount:     fmt.Sprintf("%d", amount),
 	}
 
 	if response, err = refundSimobiAPI(c, cm.Config.RefundURL, msg); err != nil {
@@ -376,7 +374,7 @@ func refundSimobiAPI(c *HttpClient, url string, msg *cm.SimobiRequest) (response
 	}
 
 	//initiliaze request
-	
+
 	if post, e := http.NewRequest("POST", strings.TrimSpace(url), bytes.NewBuffer(body)); e != nil {
 		err = ex.Error(e, be.ERR_OTHERS).Rem("Unable to create new http request")
 		return
@@ -443,7 +441,6 @@ func refundSimobiAPI(c *HttpClient, url string, msg *cm.SimobiRequest) (response
 				return
 			}
 
-			
 		}
 	}
 
@@ -451,26 +448,26 @@ func refundSimobiAPI(c *HttpClient, url string, msg *cm.SimobiRequest) (response
 }
 
 func InspectResponseCode(msg *cm.SimobiCallBack) *ex.AppError {
-	
-	switch  {
-		case strings.ToLower(msg.DataStatus.Status) == "submitted":			
-			return ex.Errorc(be.ERR_IN_PROGRESS).Rem("in progress")
-		case strings.ToLower(msg.DataStatus.Status) == "paid":			
-			return ex.Errorc(be.ERR_SUCCESS).Rem("Success")
-		case msg.ResponseCode == "01" || msg.ResponseCode == "97" || msg.ResponseCode == "99":	
-			return ex.Errorc(be.ERR_TRX_INVALID).Rem("Failed - Catch Error")
-		case msg.ResponseCode == "02" || msg.ResponseCode == "98":	
-			return ex.Errorc(be.ERR_PAYMENT_IN_PROGRESS).Rem("pending")
-		case msg.ResponseCode == "06":	
-			return ex.Errorc(be.ERR_ACCOUNT_NOT_FOUND).Rem("User not Found")
-		case msg.ResponseCode == "08":	
-			return ex.Errorc(be.ERR_TRX_DUPLICATE).Rem("txId is already Exist")
-		case msg.ResponseCode == "51":	
-			return ex.Errorc(be.ERR_PAYMENT_DECLINED).Rem("Insufficient balance")
-		case msg.ResponseCode == "61":	
-			return ex.Errorc(be.ERR_TRX_UNAUTHORIZED).Rem("Amount limit exceeded")								
-		default:			
-			return ex.Errorc(be.ERR_OTHERS).Rem(msg.ResponseCode, msg.ResponseMessage)
+
+	switch {
+	case strings.ToLower(msg.DataStatus.Status) == "submitted":
+		return ex.Errorc(be.ERR_IN_PROGRESS).Rem("in progress")
+	case strings.ToLower(msg.DataStatus.Status) == "paid":
+		return ex.Errorc(be.ERR_SUCCESS).Rem("Success")
+	case msg.ResponseCode == "01" || msg.ResponseCode == "97" || msg.ResponseCode == "99":
+		return ex.Errorc(be.ERR_TRX_INVALID).Rem("Failed - Catch Error")
+	case msg.ResponseCode == "02" || msg.ResponseCode == "98":
+		return ex.Errorc(be.ERR_PAYMENT_IN_PROGRESS).Rem("pending")
+	case msg.ResponseCode == "06":
+		return ex.Errorc(be.ERR_ACCOUNT_NOT_FOUND).Rem("User not Found")
+	case msg.ResponseCode == "08":
+		return ex.Errorc(be.ERR_TRX_DUPLICATE).Rem("txId is already Exist")
+	case msg.ResponseCode == "51":
+		return ex.Errorc(be.ERR_PAYMENT_DECLINED).Rem("Insufficient balance")
+	case msg.ResponseCode == "61":
+		return ex.Errorc(be.ERR_TRX_UNAUTHORIZED).Rem("Amount limit exceeded")
+	default:
+		return ex.Errorc(be.ERR_OTHERS).Rem(msg.ResponseCode, msg.ResponseMessage)
 	}
 
 }
